@@ -17,11 +17,10 @@ class SingleClassGroupSampler(Sampler):
         with open(file_path, 'r') as f:
             samples = f.readlines()
 
-        samples = [sample.strip('\n').split('\t') for sample in samples]
-        samples = [[int(sample[0]), int(sample[1])] for sample in samples]
+        samples_labels = [int(sample.strip('\n').split('\t')[1]) for sample in samples]
 
         label2id = defaultdict(lambda: [])
-        for (index, label) in samples:
+        for index, label in enumerate(samples_labels):
             label2id[label].append(index)
 
         total_samples = 0
