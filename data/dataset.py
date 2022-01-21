@@ -11,12 +11,17 @@ from torch import distributed
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
+from .samplers import SingleClassGroupSampler
+
+
 def get_dataloader(
     root_dir: str,
     local_rank: int,
     batch_size: int,
-    dali = False,
-    transform = None) -> Iterable:
+    label_group_size: int,
+    num_workers: int = 2,
+    dali=False,
+    transform=None) -> Iterable:
     if dali and root_dir != "synthetic":
         rec = os.path.join(root_dir, 'train.rec')
         idx = os.path.join(root_dir, 'train.idx')
@@ -27,18 +32,19 @@ def get_dataloader(
         if root_dir == "synthetic":
             train_set = SyntheticDataset(transform)
         else:
-            train_set = MXFaceDataset(root_dir=root_dir, local_rank=local_rank)
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_set, shuffle=True)
+            train_set = MXFaceDataset(root_dir=root_dir, local_rank=local_rank, transform=transform)
+        labels_path = os.path.join(root_dir, 'labels.txt') if root_dir != "synthetic" else 'data/synth_labels.txt'
+        batch_sampler = SingleClassGroupSampler(file_path=labels_path, batch_size=batch_size,
+                                                group_size=label_group_size, drop_last=True)
         train_loader = DataLoaderX(
             local_rank=local_rank,
             dataset=train_set,
-            batch_size=batch_size,
-            sampler=train_sampler,
-            num_workers=2,
+            batch_sampler=batch_sampler,
+            num_workers=num_workers,
             pin_memory=True,
-            drop_last=True,
         )
         return train_loader
+
 
 class BackgroundGenerator(threading.Thread):
     def __init__(self, generator, local_rank, max_prefetch=6):
@@ -99,9 +105,9 @@ class DataLoaderX(DataLoader):
 
 
 class MXFaceDataset(Dataset):
-    def __init__(self, root_dir, local_rank):
+    def __init__(self, root_dir, local_rank, transform=None):
         super(MXFaceDataset, self).__init__()
-        self.transform = transforms.Compose(
+        self.transform = transform or transforms.Compose(
             [transforms.ToPILImage(),
              transforms.RandomHorizontalFlip(),
              transforms.ToTensor(),
@@ -131,6 +137,8 @@ class MXFaceDataset(Dataset):
         sample = mx.image.imdecode(img).asnumpy()
         if self.transform is not None:
             sample = self.transform(sample)
+            sample = tuple(sample) if isinstance(sample, Iterable) else (sample,)
+            return sample + (label,)
         return sample, label
 
     def __len__(self):
@@ -140,20 +148,23 @@ class MXFaceDataset(Dataset):
 class SyntheticDataset(Dataset):
     def __init__(self, transform=None):
         super(SyntheticDataset, self).__init__()
-        img = np.random.randint(0, 255, size=(112, 112, 3), dtype=np.int32)
-        img = np.transpose(img, (2, 0, 1))
-        img = torch.from_numpy(img).squeeze(0).float()
-        img = ((img / 255) - 0.5) / 0.5
+        img = np.random.randint(0, 255, size=(112, 112, 3), dtype=np.uint8)
+        # img = np.transpose(img, (2, 0, 1))
+        # img = torch.from_numpy(img).squeeze(0).float()
+        # img = ((img / 255) - 0.5) / 0.5
         self.img = img
-        self.label = 1
-        self.transform = transform
+        self.transform = transform or transforms.Compose(
+            [transforms.ToTensor(),
+             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+             ])
 
     def __getitem__(self, index):
+        label = index // 100
         if self.transform is not None:
             img = self.transform(self.img)
             img = tuple(img) if isinstance(img, Iterable) else (img,)
-            return img + (self.label,)
-        return self.img, self.label
+            return img + (label,)
+        return self.img, label
 
     def __len__(self):
         return 100000

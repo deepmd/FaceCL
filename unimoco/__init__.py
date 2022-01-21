@@ -6,5 +6,4 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 # ------------------------------------------------------------------------
 from .unimoco import UniMoCo
-from .loader import *
 from .losses import *

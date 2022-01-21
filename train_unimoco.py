@@ -6,12 +6,11 @@ import os
 import torch
 from torch import distributed
 from torch.utils.tensorboard import SummaryWriter
-from torchvision.transforms import transforms
 
 from backbones import get_model
-from dataset import get_dataloader
+from data import get_dataloader, get_transform
 
-from unimoco import UniMoCo, GaussianBlur, TwoCropsTransform, UnifiedContrastive
+from unimoco import UniMoCo, UnifiedContrastive
 from utils.utils_callbacks import CallBackLogging, CallBackVerification
 from utils.utils_config import get_config
 from utils.utils_logging import AverageMeter, init_logging
@@ -69,20 +68,10 @@ def main(args):
         # torch.backends.cudnn.benchmark = False
 
     # define train_loader
-    augmentation = [
-        transforms.ToPILImage(),
-        transforms.RandomApply([
-            transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
-        ], p=0.8),
-        transforms.RandomGrayscale(p=0.2),
-        transforms.RandomApply([GaussianBlur([.1, 2.])], p=0.5),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-    ]
+    train_transform = get_transform()
     train_loader = get_dataloader(
-        cfg.rec, local_rank=args.local_rank, batch_size=cfg.batch_size, dali=cfg.dali,
-        transform=TwoCropsTransform(transforms.Compose(augmentation)))
+        cfg.rec, local_rank=args.local_rank, batch_size=cfg.batch_size, label_group_size=cfg.samples_per_label,
+        dali=cfg.dali, transform=train_transform)
 
     # define model
     model = UniMoCo(

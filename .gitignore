@@ -1,4 +1,8 @@
 work_dirs/
+scripts/
+configs/
+!configs/__init__.py
+!configs/synthetic_r50_unimoco.py
 
 # Byte-compiled / optimized / DLL files
 **__pycache__/
