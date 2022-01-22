@@ -114,7 +114,7 @@ def main(args):
     for epoch in range(start_epoch, cfg.epochs):
         # train_loader.sampler.set_epoch(epoch)
 
-        latest_lr = adjust_learning_rate(optimizer, epoch, cfg)
+        lr = adjust_learning_rate(optimizer, epoch, cfg)
 
         # train for one epoch
         for _, (images_q, images_k, labels) in enumerate(train_loader):
@@ -135,10 +135,10 @@ def main(args):
 
             with torch.no_grad():
                 loss_am.update(loss.item(), 1)
-                callback_logging(global_step, loss_am, epoch, cfg.fp16, latest_lr, amp)
+                callback_logging(global_step, loss_am, epoch, cfg.fp16, lr, amp)
 
                 if global_step % cfg.verbose == 0 and global_step > 200:
-                    callback_verification(global_step, model.encoder_q)
+                    callback_verification(global_step, model.module.encoder_q)
 
         if rank == 0:
             path_module = os.path.join(cfg.output, "model.pt")
