@@ -92,6 +92,7 @@ def main(args):
     total_batch_size = cfg.batch_size * world_size
     cfg.total_step = cfg.num_image // total_batch_size * cfg.epochs
 
+    logging.info("world_size: %d" % world_size)
     for key, value in cfg.items():
         num_space = 25 - len(key)
         logging.info(": " + key + " " * num_space + str(value))
@@ -138,7 +139,7 @@ def main(args):
                 callback_logging(global_step, loss_am, epoch, cfg.fp16, lr, amp)
 
                 if global_step % cfg.verbose == 0 and global_step > 200:
-                    callback_verification(global_step, model.module.encoder_q)
+                    callback_verification(global_step, model)
 
         if rank == 0:
             path_module = os.path.join(cfg.output, "model.pt")

@@ -121,7 +121,7 @@ class UniMoCo(nn.Module):
 
         return x_gather[idx_this]
     
-    def forward(self, im_q, im_k, labels):
+    def forward(self, im_q, im_k=None, labels=None):
         """
         Input:
             im_q: a batch of query images
@@ -131,6 +131,10 @@ class UniMoCo(nn.Module):
             logits: with shape NxK
             targets: with shape NxK
         """
+        # if only im_q is provided, just return output of encoder_q
+        if im_k is None and labels is None:
+            return self.encoder_q(im_q)
+
         # compute query features
         q = self.projection_q(self.encoder_q(im_q))  # queries: NxC
         q = nn.functional.normalize(q, dim=1)

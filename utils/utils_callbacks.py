@@ -51,9 +51,6 @@ class CallBackVerification(object):
 
     def __call__(self, num_update, backbone: torch.nn.Module):
         if self.rank is 0 and num_update > 0:
-            if not isinstance(backbone, torch.nn.parallel.DistributedDataParallel):
-                backbone = torch.nn.parallel.DistributedDataParallel(
-                    module=backbone, broadcast_buffers=False, device_ids=[self.rank])
             backbone.eval()
             self.ver_test(backbone, num_update)
             backbone.train()
