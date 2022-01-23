@@ -89,8 +89,7 @@ def main(args):
         momentum=cfg.momentum,
         weight_decay=cfg.weight_decay)
 
-    total_batch_size = cfg.batch_size * world_size
-    cfg.total_step = cfg.num_image // total_batch_size * cfg.epochs
+    cfg.total_step = len(train_loader) * cfg.epochs
 
     logging.info("world_size: %d" % world_size)
     for key, value in cfg.items():
@@ -113,10 +112,9 @@ def main(args):
     amp = torch.cuda.amp.grad_scaler.GradScaler(growth_interval=100)
 
     for epoch in range(start_epoch, cfg.epochs):
-        # train_loader.sampler.set_epoch(epoch)
-
         lr = adjust_learning_rate(optimizer, epoch, cfg)
 
+        train_loader.batch_sampler.set_epoch(epoch)
         # train for one epoch
         for _, (images_q, images_k, labels) in enumerate(train_loader):
             global_step += 1

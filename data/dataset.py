@@ -11,7 +11,7 @@ from torch import distributed
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
-from .samplers import SingleClassGroupSampler
+from .samplers import DistributedClassGroupSampler
 
 
 def get_dataloader(
@@ -34,8 +34,8 @@ def get_dataloader(
         else:
             train_set = MXFaceDataset(root_dir=root_dir, local_rank=local_rank, transform=transform)
         labels_path = os.path.join(root_dir, 'labels.txt') if root_dir != "synthetic" else 'data/synth_labels.txt'
-        batch_sampler = SingleClassGroupSampler(file_path=labels_path, batch_size=batch_size,
-                                                group_size=label_group_size, drop_last=True)
+        batch_sampler = DistributedClassGroupSampler(labels_path=labels_path, batch_size=batch_size,
+                                                     group_size=label_group_size, drop_last=True)
         train_loader = DataLoaderX(
             local_rank=local_rank,
             dataset=train_set,
