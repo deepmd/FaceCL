@@ -3,3 +3,10 @@ easydict
 mxnet
 onnx
 sklearn
+
+matplotlib
+pandas
+opencv-python
+scikit-image
+menpo
+prettytable
