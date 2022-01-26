@@ -1,14 +1,15 @@
 import argparse
 import logging
-import math
 import os
 
 import torch
 from torch import distributed
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.tensorboard import SummaryWriter
 
 from backbones import get_model
 from data import get_dataloader, get_transform
+from lr_scheduler import PolyScheduler
 
 from unimoco import UniMoCo, UnifiedContrastive
 from utils.utils_callbacks import CallBackLogging, CallBackVerification
@@ -29,19 +30,6 @@ except KeyError:
         rank=rank,
         world_size=world_size,
     )
-
-
-def adjust_learning_rate(optimizer, epoch, args):
-    """Decay the learning rate based on schedule"""
-    lr = args.lr
-    if args.cos:  # cosine lr schedule
-        lr *= 0.5 * (1. + math.cos(math.pi * epoch / args.epochs))
-    else:  # stepwise lr schedule
-        for milestone in args.schedule:
-            lr *= 0.1 if epoch >= milestone else 1.
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-    return lr
 
 
 def main(args):
@@ -68,10 +56,13 @@ def main(args):
         # torch.backends.cudnn.benchmark = False
 
     # define train_loader
-    train_transform = get_transform()
+    train_transform = get_transform(crop=cfg.crop_aug)
     train_loader = get_dataloader(
         cfg.rec, local_rank=args.local_rank, batch_size=cfg.batch_size, label_group_size=cfg.samples_per_label,
         dali=cfg.dali, transform=train_transform)
+
+    steps_per_epoch = len(train_loader)
+    cfg.total_step = steps_per_epoch * cfg.epochs
 
     # define model
     model = UniMoCo(
@@ -82,14 +73,19 @@ def main(args):
     model.train()
 
     # define loss function (criterion) and optimizer
-    criterion = UnifiedContrastive().cuda()
+    criterion = UnifiedContrastive(margin=cfg.loss_margin).cuda()
     optimizer = torch.optim.SGD(
         model.parameters(),
         lr=cfg.lr,
         momentum=cfg.momentum,
         weight_decay=cfg.weight_decay)
-
-    cfg.total_step = len(train_loader) * cfg.epochs
+    if cfg.scheduler == "cos":
+        lr_scheduler = CosineAnnealingLR(optimizer, T_max=cfg.total_step)
+    elif cfg.scheduler == "poly":
+        warmup_step = steps_per_epoch * cfg.warmup_epoch
+        lr_scheduler = PolyScheduler(optimizer, base_lr=cfg.lr, max_steps=cfg.total_step, warmup_steps=warmup_step)
+    else:
+        ValueError("Unknown scheduler was specified in config!")
 
     logging.info("world_size: %d" % world_size)
     for key, value in cfg.items():
@@ -112,7 +108,6 @@ def main(args):
     amp = torch.cuda.amp.grad_scaler.GradScaler(growth_interval=100)
 
     for epoch in range(start_epoch, cfg.epochs):
-        lr = adjust_learning_rate(optimizer, epoch, cfg)
 
         train_loader.batch_sampler.set_epoch(epoch)
         # train for one epoch
@@ -131,6 +126,8 @@ def main(args):
                 optimizer.step()
 
             optimizer.zero_grad()
+            lr = optimizer.param_groups[0]['lr']
+            lr_scheduler.step()
 
             with torch.no_grad():
                 loss_am.update(loss.item(), 1)

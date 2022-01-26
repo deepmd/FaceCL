@@ -16,10 +16,12 @@ config.batch_size = 8  # should be divisible by samples_per_label | total_batch_
 config.samples_per_label = 2
 config.lr = 0.2
 config.epochs = 25
-config.cos = True
+config.scheduler = "cos"
 config.verbose = 2000
 config.frequent = 10
 config.dali = False
+config.loss_margin = 0
+config.crop_aug = False
 
 config.moco_dim = 128
 config.moco_k = 65536  # should be divisible by total_batch_size

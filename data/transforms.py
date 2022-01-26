@@ -1,6 +1,6 @@
-from PIL import ImageFilter
 import random
 
+from PIL import ImageFilter
 from torchvision.transforms import transforms
 
 
@@ -28,9 +28,13 @@ class GaussianBlur(object):
         return x
 
 
-def get_transform():
-    augmentation = [
-        transforms.ToPILImage(),
+def get_transform(crop=False):
+    augmentation = [transforms.ToPILImage()]
+    if crop:
+        augmentation.append(
+            transforms.RandomResizedCrop(112, scale=(0.2, 1.)),
+        )
+    augmentation.extend([
         transforms.RandomApply([
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
         ], p=0.8),
@@ -39,5 +43,5 @@ def get_transform():
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-    ]
+    ])
     return TwoViewsTransform(transforms.Compose(augmentation))
