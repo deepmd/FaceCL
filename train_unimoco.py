@@ -66,11 +66,12 @@ def main(args):
 
     # define model
     model = UniMoCo(
-        base_encoder=lambda: get_model(cfg.network, dropout=0.0, fp16=cfg.fp16, num_features=cfg.embedding_size),
+        base_encoder=lambda: get_model(cfg.network, fp16=cfg.fp16, num_features=cfg.embedding_size),
         dim=cfg.moco_dim, K=cfg.moco_k, m=cfg.moco_m, T=cfg.moco_t, mlp=cfg.moco_mlp)
     model = torch.nn.parallel.DistributedDataParallel(
         module=model.cuda(), broadcast_buffers=False, device_ids=[args.local_rank])
     model.train()
+    cfg.embedding_size = model.module.embedding_size
 
     # define loss function (criterion) and optimizer
     criterion = UnifiedContrastive(margin=cfg.loss_margin).cuda()
@@ -85,7 +86,7 @@ def main(args):
         warmup_step = steps_per_epoch * cfg.warmup_epoch
         lr_scheduler = PolyScheduler(optimizer, base_lr=cfg.lr, max_steps=cfg.total_step, warmup_steps=warmup_step)
     else:
-        ValueError("Unknown scheduler was specified in config!")
+        raise ValueError("Unknown scheduler was specified in config.")
 
     logging.info("world_size: %d" % world_size)
     for key, value in cfg.items():

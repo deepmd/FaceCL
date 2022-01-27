@@ -23,10 +23,10 @@ class UniMoCo(nn.Module):
         self.m = m
         self.T = T
 
-        self.encoder_q = base_encoder()
-        self.encoder_k = base_encoder()
+        self.encoder_q, encoder_out_dim = base_encoder()
+        self.encoder_k, _ = base_encoder()
+        self.embedding_size = encoder_out_dim
 
-        encoder_out_dim = self.encoder_q.features.weight.shape[0]
         if not mlp:
             self.projection_q = nn.Linear(encoder_out_dim, dim)
             self.projection_k = nn.Linear(encoder_out_dim, dim)

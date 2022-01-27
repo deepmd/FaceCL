@@ -125,7 +125,7 @@ class CallBackLogging(object):
 
                 # log queue stats
                 num_items, mean, std, mini, maxi, zeros_count, balance_score = self._get_queue_stats()
-                msg += "  |  Queue Stats:  " \
+                msg += "  |  QueueStats: " \
                        "#Items %d   #Zeros %d   Mean %.2f   Std %.2f   Min %d   Max %d   Balance %.3f   AvgPos %.2f" % (
                           num_items, zeros_count, mean, std, mini, maxi, balance_score, positives.avg
                        )
