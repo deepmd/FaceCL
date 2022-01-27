@@ -31,5 +31,5 @@ config.moco_mlp = True
 
 config.rec = "synthetic"
 config.num_image = 100000
-
+config.num_classes = 1000
 config.val_targets = []

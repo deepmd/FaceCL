@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 import time
 from typing import List
@@ -57,7 +58,7 @@ class CallBackVerification(object):
 
 
 class CallBackLogging(object):
-    def __init__(self, frequent, total_step, batch_size, writer=None):
+    def __init__(self, frequent, total_step, batch_size, num_labels, label_queue, writer=None):
         self.frequent: int = frequent
         self.rank: int = distributed.get_rank()
         self.world_size: int = distributed.get_world_size()
@@ -65,9 +66,27 @@ class CallBackLogging(object):
         self.total_step: int = total_step
         self.batch_size: int = batch_size
         self.writer = writer
+        self.label_queue = label_queue
+        self.num_labels = num_labels
 
         self.init = False
         self.tic = 0
+
+    @torch.no_grad()
+    def _get_queue_stats(self):
+        valid_items = self.label_queue[self.label_queue != -1]
+        num_items = len(valid_items)
+        labels_counts = torch.bincount(valid_items)
+        assert len(labels_counts) == self.num_labels  # assumed that label ids are from 0 to (num_labels-1)
+        std, mean = torch.std_mean(labels_counts.float())
+        mini = torch.min(labels_counts)
+        maxi = torch.max(labels_counts)
+        zeros_count = self.num_labels - torch.count_nonzero(labels_counts)
+        probs = labels_counts / num_items  # label probabilities
+        cross_entropy = -torch.sum((1/self.num_labels) * torch.log(probs + 1e-20))  # cross entropy of label probabilities relative to balanced label probabilities (1/c)
+        balanced_entropy = math.log(self.num_labels)  # entropy of balanced label probabilities (1/c)
+        balance_score = balanced_entropy / cross_entropy  # in range of (0, 1]
+        return num_items, mean.item(), std.item(), mini.item(), maxi.item(), zeros_count.item(), balance_score.item()
 
     def __call__(self,
                  global_step: int,
@@ -75,7 +94,8 @@ class CallBackLogging(object):
                  epoch: int,
                  fp16: bool,
                  learning_rate: float,
-                 grad_scaler: torch.cuda.amp.GradScaler):
+                 grad_scaler: torch.cuda.amp.GradScaler,
+                 positives: AverageMeter):
         if self.rank == 0 and global_step > 0 and global_step % self.frequent == 0:
             if self.init:
                 try:
@@ -102,8 +122,22 @@ class CallBackLogging(object):
                           "Required: %1.f hours" % (
                               speed_total, loss.avg, learning_rate, epoch, global_step, time_for_end
                           )
+
+                # log queue stats
+                num_items, mean, std, mini, maxi, zeros_count, balance_score = self._get_queue_stats()
+                msg += "  |  Queue Stats:   " \
+                       "#Items %d   #Zeros %d   Mean %d   Std %d   Min %d   Max %d   Balance %.3f   AvgPos %.2f" % (
+                          num_items, zeros_count, mean, std, mini, maxi, balance_score, positives.avg
+                       )
+                if self.writer is not None:
+                    self.writer.add_scalar('queue/#items', num_items, global_step)
+                    self.writer.add_scalar('queue/avg_per_label', mean, global_step)
+                    self.writer.add_scalar('queue/balance_score', balance_score, global_step)
+                    self.writer.add_scalar('queue/avg_positives', positives.avg, global_step)
+
                 logging.info(msg)
                 loss.reset()
+                positives.reset()
                 self.tic = time.time()
             else:
                 self.init = True

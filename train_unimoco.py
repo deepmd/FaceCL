@@ -99,10 +99,13 @@ def main(args):
         frequent=cfg.frequent,
         total_step=cfg.total_step,
         batch_size=cfg.batch_size,
+        num_labels=cfg.num_classes,
+        label_queue=model.module.label_queue,
         writer=summary_writer
     )
 
     loss_am = AverageMeter()
+    positives_am = AverageMeter()
     start_epoch = 0
     global_step = 0
     amp = torch.cuda.amp.grad_scaler.GradScaler(growth_interval=100)
@@ -131,7 +134,8 @@ def main(args):
 
             with torch.no_grad():
                 loss_am.update(loss.item(), 1)
-                callback_logging(global_step, loss_am, epoch, cfg.fp16, lr, amp)
+                positives_am.update(target.sum(1).mean().item(), target.shape[0])
+                callback_logging(global_step, loss_am, epoch, cfg.fp16, lr, amp, positives_am)
 
                 if global_step % cfg.verbose == 0 and global_step > 200:
                     callback_verification(global_step, model)
