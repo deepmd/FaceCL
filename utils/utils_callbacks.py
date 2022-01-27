@@ -76,7 +76,7 @@ class CallBackLogging(object):
     def _get_queue_stats(self):
         valid_items = self.label_queue[self.label_queue != -1]
         num_items = len(valid_items)
-        labels_counts = torch.bincount(valid_items)
+        labels_counts = torch.bincount(valid_items, minlength=self.num_labels)
         assert len(labels_counts) == self.num_labels  # assumed that label ids are from 0 to (num_labels-1)
         std, mean = torch.std_mean(labels_counts.float())
         mini = torch.min(labels_counts)
@@ -125,8 +125,8 @@ class CallBackLogging(object):
 
                 # log queue stats
                 num_items, mean, std, mini, maxi, zeros_count, balance_score = self._get_queue_stats()
-                msg += "  |  Queue Stats:   " \
-                       "#Items %d   #Zeros %d   Mean %d   Std %d   Min %d   Max %d   Balance %.3f   AvgPos %.2f" % (
+                msg += "  |  Queue Stats:  " \
+                       "#Items %d   #Zeros %d   Mean %.2f   Std %.2f   Min %d   Max %d   Balance %.3f   AvgPos %.2f" % (
                           num_items, zeros_count, mean, std, mini, maxi, balance_score, positives.avg
                        )
                 if self.writer is not None:
