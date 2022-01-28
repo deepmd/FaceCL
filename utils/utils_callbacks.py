@@ -112,20 +112,20 @@ class CallBackLogging(object):
                     self.writer.add_scalar('learning_rate', learning_rate, global_step)
                     self.writer.add_scalar('loss', loss.avg, global_step)
                 if fp16:
-                    msg = "Speed %.2f samples/sec   Loss %.4f   LearningRate %.4f   Epoch: %d   Global Step: %d   " \
-                          "Fp16 Grad Scale: %2.f   Required: %1.f hours" % (
+                    msg = "Speed %.2fsps   Loss %.4f   LR %.4f   Epoch: %d   Step: %d   " \
+                          "Fp16_Grad_Scale: %2.f   Required: %1.fh" % (
                               speed_total, loss.avg, learning_rate, epoch, global_step,
                               grad_scaler.get_scale(), time_for_end
                           )
                 else:
-                    msg = "Speed %.2f samples/sec   Loss %.4f   LearningRate %.4f   Epoch: %d   Global Step: %d   " \
-                          "Required: %1.f hours" % (
+                    msg = "Speed %.2fsps   Loss %.4f   LR %.4f   Epoch: %d   Step: %d   " \
+                          "Required: %1.fh" % (
                               speed_total, loss.avg, learning_rate, epoch, global_step, time_for_end
                           )
 
                 # log queue stats
                 num_items, mean, std, mini, maxi, zeros_count, balance_score = self._get_queue_stats()
-                msg += "  |  QueueStats: " \
+                msg += "  |  Queue_Stats: " \
                        "#Items %d   #Zeros %d   Mean %.2f   Std %.2f   Min %d   Max %d   Balance %.3f   AvgPos %.2f" % (
                           num_items, zeros_count, mean, std, mini, maxi, balance_score, positives.avg
                        )
