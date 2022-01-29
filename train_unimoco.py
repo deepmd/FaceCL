@@ -36,7 +36,7 @@ def main(args):
     torch.cuda.set_device(args.local_rank)
     cfg = get_config(args.config)
 
-    os.makedirs(cfg.output, exist_ok=True)
+    os.makedirs(os.path.join(cfg.output, "model"), exist_ok=True)
     init_logging(rank, cfg.output)
     summary_writer = (
         SummaryWriter(log_dir=os.path.join(cfg.output, "tensorboard"))
@@ -142,15 +142,12 @@ def main(args):
                     callback_verification(global_step, model)
 
         if rank == 0:
-            path_module = os.path.join(cfg.output, "model.pt")
+            path_module = os.path.join(cfg.output, f"model/model_{epoch}.pt")
             torch.save(model.module.state_dict(), path_module)
 
         if cfg.dali:
             train_loader.reset()
 
-    if rank == 0:
-        path_module = os.path.join(cfg.output, "model.pt")
-        torch.save(model.module.state_dict(), path_module)
     distributed.destroy_process_group()
 
 
