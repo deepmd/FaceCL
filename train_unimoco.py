@@ -56,7 +56,7 @@ def main(args):
         # torch.backends.cudnn.benchmark = False
 
     # define train_loader
-    train_transform = get_transform(crop=cfg.crop_aug)
+    train_transform = get_transform(cfg.augmentation)
     train_loader = get_dataloader(
         cfg.rec, local_rank=args.local_rank, batch_size=cfg.batch_size, label_group_size=cfg.samples_per_label,
         dali=cfg.dali, transform=train_transform)

@@ -21,7 +21,7 @@ config.verbose = 2000
 config.frequent = 10
 config.dali = False
 config.loss_margin = 0
-config.crop_aug = False
+config.augmentation = "MoCo2_NoCrop"
 
 config.moco_dim = 128
 config.moco_k = 65536  # should be divisible by total_batch_size
