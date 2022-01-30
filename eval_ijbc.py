@@ -60,7 +60,7 @@ class Embedding(object):
         for k, v in weight.items():
             if k.startswith('encoder_q.'):
                 encoder_state_dict[k[10:]] = v
-        resnet = get_model(args.network, dropout=0, fp16=False).cuda()
+        resnet = get_model(args.network, dropout=0, fp16=False)[0].cuda()
         resnet.load_state_dict(encoder_state_dict)
         model = torch.nn.DataParallel(resnet)
         self.model = model
