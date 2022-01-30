@@ -23,16 +23,16 @@ class UniMoCo(nn.Module):
         self.m = m
         self.T = T
 
-        self.encoder_q, encoder_out_dim = base_encoder()
+        self.encoder_q, dim_mlp = base_encoder()
         self.encoder_k, _ = base_encoder()
-        self.embedding_size = encoder_out_dim
+        self.embedding_size = dim_mlp
 
         if not mlp:
-            self.projection_q = nn.Linear(encoder_out_dim, dim)
-            self.projection_k = nn.Linear(encoder_out_dim, dim)
+            self.projection_q = nn.Linear(dim_mlp, dim)
+            self.projection_k = nn.Linear(dim_mlp, dim)
         else:
-            self.projection_q = nn.Sequential(nn.Linear(encoder_out_dim, dim), nn.ReLU(), nn.Linear(dim, dim))
-            self.projection_k = nn.Sequential(nn.Linear(encoder_out_dim, dim), nn.ReLU(), nn.Linear(dim, dim))
+            self.projection_q = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), nn.Linear(dim_mlp, dim))
+            self.projection_k = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), nn.Linear(dim_mlp, dim))
 
         for param_q, param_k in zip(chain(self.encoder_q.parameters(), self.projection_q.parameters()),
                                     chain(self.encoder_k.parameters(), self.projection_k.parameters())):
