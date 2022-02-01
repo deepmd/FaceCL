@@ -72,6 +72,7 @@ def main(args):
         module=model.cuda(), broadcast_buffers=False, device_ids=[args.local_rank])
     model.train()
     cfg.embedding_size = model.module.embedding_size
+    cfg.moco_mlp = model.module.dim_mlp
 
     # define loss function (criterion) and optimizer
     criterion = UnifiedContrastive(margin=cfg.loss_margin).cuda()

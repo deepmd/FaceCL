@@ -16,18 +16,18 @@ config.batch_size = 8  # should be divisible by samples_per_label | total_batch_
 config.samples_per_label = 2
 config.lr = 0.2
 config.epochs = 25
-config.scheduler = "cos"
+config.scheduler = "cos"  # cos: CosineAnnealingLR, poly: PolyScheduler
 config.verbose = 2000
 config.frequent = 10
 config.dali = False
 config.loss_margin = 0
-config.augmentation = "MoCo2_NoCrop"
+config.augmentation = "MoCo2_NoCrop"  # MoCo2, MoCo2_NoCrop, ArcFace
 
 config.moco_dim = 128
 config.moco_k = 65536  # should be divisible by total_batch_size
 config.moco_m = 0.999
 config.moco_t = 0.07
-config.moco_mlp = True
+config.moco_mlp = None  # same_in: same as embedding_size, same_out: same as moco_dim, None: a single linear layer
 
 config.rec = "synthetic"
 config.num_image = 100000

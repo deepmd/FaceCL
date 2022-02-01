@@ -10,7 +10,7 @@ class UniMoCo(nn.Module):
     """
     build a UniMoCo model with the same hyper-parameter with MoCo
     """
-    def __init__(self, base_encoder, dim=128, K=65536, m=0.999, T=0.07, mlp=False):
+    def __init__(self, base_encoder, dim=128, K=65536, m=0.999, T=0.07, mlp=None):
         """
         dim: feature dimension (default: 128)
         K: queue size; number of negative keys (default: 65536)
@@ -23,16 +23,21 @@ class UniMoCo(nn.Module):
         self.m = m
         self.T = T
 
-        self.encoder_q, dim_mlp = base_encoder()
+        self.encoder_q, embedding_size = base_encoder()
         self.encoder_k, _ = base_encoder()
-        self.embedding_size = dim_mlp
+        self.embedding_size = embedding_size
 
-        if not mlp:
-            self.projection_q = nn.Linear(dim_mlp, dim)
-            self.projection_k = nn.Linear(dim_mlp, dim)
+        if mlp is None:
+            self.dim_mlp = None
+            self.projection_q = nn.Linear(embedding_size, dim)
+            self.projection_k = nn.Linear(embedding_size, dim)
         else:
-            self.projection_q = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), nn.Linear(dim_mlp, dim))
-            self.projection_k = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), nn.Linear(dim_mlp, dim))
+            dim_mlp = embedding_size if mlp == "same_in" else\
+                      dim if mlp == "same_out" else \
+                      int(mlp)
+            self.dim_mlp = dim_mlp
+            self.projection_q = nn.Sequential(nn.Linear(embedding_size, dim_mlp), nn.ReLU(), nn.Linear(dim_mlp, dim))
+            self.projection_k = nn.Sequential(nn.Linear(embedding_size, dim_mlp), nn.ReLU(), nn.Linear(dim_mlp, dim))
 
         for param_q, param_k in zip(chain(self.encoder_q.parameters(), self.projection_q.parameters()),
                                     chain(self.encoder_k.parameters(), self.projection_k.parameters())):
