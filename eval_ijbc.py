@@ -40,19 +40,25 @@ parser.add_argument('--target', default='IJBC', type=str, help='target, set to I
 args = parser.parse_args()
 
 target = args.target
+network = args.network
 model_path = args.model_prefix
 image_path = args.image_path
 result_dir = args.result_dir
-gpu_id = None
 use_norm_score = True  # if Ture, TestMode(N1)
 use_detector_score = True  # if Ture, TestMode(D1)
 use_flip_test = True  # if Ture, TestMode(F1)
 job = args.job
-batch_size = args.batch_size
+num_gpus = torch.cuda.device_count()
+batch_size = num_gpus * args.batch_size
+
+print('target             %s' % target)
+print('model_path         %s' % model_path)
+print('num_gpus           %d' % num_gpus)
+print('total_batch_size   %d' % batch_size)
 
 
 class Embedding(object):
-    def __init__(self, prefix, data_shape, batch_size=1):
+    def __init__(self, network, prefix, data_shape, batch_size=1):
         image_size = (112, 112)
         self.image_size = image_size
         weight = torch.load(prefix)
@@ -60,7 +66,7 @@ class Embedding(object):
         for k, v in weight.items():
             if k.startswith('encoder_q.'):
                 encoder_state_dict[k[10:]] = v
-        resnet = get_model(args.network, dropout=0, fp16=False)[0].cuda()
+        resnet = get_model(network, dropout=0, fp16=False)[0].cuda()
         resnet.load_state_dict(encoder_state_dict)
         model = torch.nn.DataParallel(resnet)
         self.model = model
@@ -155,8 +161,7 @@ def read_image_feature(path):
 # In[ ]:
 
 
-def get_image_feature(img_path, files_list, model_path, epoch, gpu_id):
-    batch_size = args.batch_size
+def get_image_feature(img_path, files_list, network, model_path, batch_size):
     data_shape = (3, 112, 112)
 
     files = files_list
@@ -167,7 +172,7 @@ def get_image_feature(img_path, files_list, model_path, epoch, gpu_id):
     img_feats = np.empty((len(files), 1024), dtype=np.float32)
 
     batch_data = np.empty((2 * batch_size, 3, 112, 112))
-    embedding = Embedding(model_path, data_shape, batch_size)
+    embedding = Embedding(network, model_path, data_shape, batch_size)
     for img_index, each_line in enumerate(files[:len(files) - rare_size]):
         name_lmk_score = each_line.strip().split(' ')
         img_name = os.path.join(img_path, name_lmk_score[0])
@@ -187,7 +192,7 @@ def get_image_feature(img_path, files_list, model_path, epoch, gpu_id):
         faceness_scores.append(name_lmk_score[-1])
 
     batch_data = np.empty((2 * rare_size, 3, 112, 112))
-    embedding = Embedding(model_path, data_shape, rare_size)
+    embedding = Embedding(network, model_path, data_shape, rare_size)
     for img_index, each_line in enumerate(files[len(files) - rare_size:]):
         name_lmk_score = each_line.strip().split(' ')
         img_name = os.path.join(img_path, name_lmk_score[0])
@@ -367,7 +372,7 @@ files_list = files
 # img_feats
 # for i in range(rank_size):
 img_feats, faceness_scores = get_image_feature(img_path, files_list,
-                                               model_path, 0, gpu_id)
+                                               network, model_path, batch_size)
 stop = timeit.default_timer()
 print('Time: %.2f s. ' % (stop - start))
 print('Feature Shape: ({} , {}) .'.format(img_feats.shape[0],
@@ -428,7 +433,7 @@ stop = timeit.default_timer()
 print('Time: %.2f s. ' % (stop - start))
 
 # In[ ]:
-save_path = os.path.join(result_dir, args.job)
+save_path = os.path.join(result_dir, job)
 # save_path = result_dir + '/%s_result' % target
 
 if not os.path.exists(save_path):

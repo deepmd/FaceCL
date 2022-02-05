@@ -5,7 +5,7 @@ from torchvision.transforms import transforms
 
 
 class TwoViewsTransform:
-    """Take two view of one image as the query and key."""
+    """Take two views of one image as the query and key."""
 
     def __init__(self, base_transform):
         self.base_transform = base_transform
