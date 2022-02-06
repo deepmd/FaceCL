@@ -35,12 +35,14 @@ parser.add_argument('--image-path', default='', type=str, help='')
 parser.add_argument('--result-dir', default='.', type=str, help='')
 parser.add_argument('--batch-size', default=128, type=int, help='')
 parser.add_argument('--network', default='iresnet50', type=str, help='')
+parser.add_argument('--num-features', default=None, type=int, help='')
 parser.add_argument('--job', default='insightface', type=str, help='job name')
 parser.add_argument('--target', default='IJBC', type=str, help='target, set to IJBC or IJBB')
 args = parser.parse_args()
 
 target = args.target
 network = args.network
+num_features = args.num_features
 model_path = args.model_prefix
 image_path = args.image_path
 result_dir = args.result_dir
@@ -66,7 +68,7 @@ class Embedding(object):
         for k, v in weight.items():
             if k.startswith('encoder_q.'):
                 encoder_state_dict[k[10:]] = v
-        resnet = get_model(network, dropout=0, fp16=False)[0].cuda()
+        resnet = get_model(network, num_features=num_features, fp16=False)[0].cuda()
         resnet.load_state_dict(encoder_state_dict)
         model = torch.nn.DataParallel(resnet)
         self.model = model

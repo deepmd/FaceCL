@@ -1,6 +1,6 @@
 work_dirs/
 scripts/
-configs/
+configs/*
 !configs/__init__.py
 !configs/synthetic_r50_unimoco.py
 
